@@ -15,9 +15,8 @@ angular.module('maps', [])
         };
 
         var mapOptions = {
-            center: new google.maps.LatLng(46.50152360421799, -84.28084373474121),
+            center: new google.maps.LatLng(46.5220, -84.3451),
             zoom: 15,
-            draggableCursor: "crosshair",
             disableDoubleClickZoom: true
         };
 
@@ -25,7 +24,8 @@ angular.module('maps', [])
             directions = new google.maps.DirectionsService(),
             markers = [],
             polylines = [],
-            clickTimeout = null;
+            clickTimeout,
+            routingListenerId;
 
         $scope.misc.latlng = {
             lat: map.getCenter().lat(),
@@ -44,7 +44,7 @@ angular.module('maps', [])
             }, 200);
         });
 
-        google.maps.event.addListener(map, 'dblclick', function (e) {
+        var routingListener = function (e) {
             $timeout.cancel(clickTimeout);
 
             var origin = e.latLng;
@@ -59,7 +59,6 @@ angular.module('maps', [])
             }, function (result, status) {
 
                 var pos = e.latLng;
-
                 if (status == google.maps.DirectionsStatus.OK) {
                     pos = result.routes[0].legs[0].end_location;
                 }
@@ -78,8 +77,19 @@ angular.module('maps', [])
                 }
 
             });
+        };
 
+        $scope.startRouting = function () {
+            mapOptions.draggableCursor = "crosshair";
+            map.setOptions(mapOptions);
+            routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
+        };
 
-        });
+        $scope.finishRouting = function () {
+            mapOptions.draggableCursor = "auto";
+            map.setOptions(mapOptions);
+            google.maps.event.removeListener(routingListenerId);
+        };
+
     }
 ]);
