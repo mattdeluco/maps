@@ -24,6 +24,7 @@ angular.module('maps', [])
         var map = new google.maps.Map($('#map-canvas')[0], mapOptions),
             directions = new google.maps.DirectionsService(),
             markers = [],
+            polylines = [],
             clickTimeout = null;
 
         $scope.misc.latlng = {
@@ -45,20 +46,40 @@ angular.module('maps', [])
 
         google.maps.event.addListener(map, 'dblclick', function (e) {
             $timeout.cancel(clickTimeout);
+
+            var origin = e.latLng;
+            if (markers.length) {
+                origin = markers[markers.length - 1].getPosition();
+            }
+
             directions.route({
-                origin: e.latLng,
+                origin: origin,
                 destination: e.latLng,
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (result, status) {
+
                 var pos = e.latLng;
+
                 if (status == google.maps.DirectionsStatus.OK) {
-                    pos = result.routes[0].legs[0].start_location;
+                    pos = result.routes[0].legs[0].end_location;
                 }
+
+                // TODO error rather than pushing marker for e
                 markers.push(new google.maps.Marker({
                     map: map,
                     position: pos
                 }));
+
+                if (markers.length) {
+                    polylines.push(new google.maps.Polyline({
+                        map: map,
+                        path: result.routes[0].overview_path
+                    }));
+                }
+
             });
+
+
         });
     }
 ]);
