@@ -44,21 +44,14 @@ angular.module('maps', [])
             }, 200);
         });
 
-        var routingListener = function (e) {
-            $timeout.cancel(clickTimeout);
-
-            var origin = e.latLng;
-            if (markers.length) {
-                origin = markers[markers.length - 1].getPosition();
-            }
-
+        var getDirections = function (origin, destination) {
             directions.route({
                 origin: origin,
-                destination: e.latLng,
+                destination: destination,
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (result, status) {
 
-                var pos = e.latLng;
+                var pos = destination;
                 if (status == google.maps.DirectionsStatus.OK) {
                     pos = result.routes[0].legs[0].end_location;
                 }
@@ -79,16 +72,26 @@ angular.module('maps', [])
             });
         };
 
+        var routingListener = function (e) {
+            $timeout.cancel(clickTimeout);
+
+            var origin = e.latLng;
+            if (markers.length) {
+                origin = markers[markers.length - 1].getPosition();
+            }
+
+            getDirections(origin, e.latLng);
+        };
+
         $scope.startRouting = function () {
-            mapOptions.draggableCursor = "crosshair";
-            map.setOptions(mapOptions);
+            map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
         };
 
         $scope.finishRouting = function () {
-            mapOptions.draggableCursor = "auto";
-            map.setOptions(mapOptions);
+            map.setOptions({draggableCursor: 'auto'});
             google.maps.event.removeListener(routingListenerId);
+            getDirections(markers[markers.length - 1].getPosition(), markers[0].getPosition());
         };
 
     }
