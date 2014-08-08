@@ -21,9 +21,10 @@ angular.module('maps', [])
             disableDoubleClickZoom: true
         };
 
-        var map = new google.maps.Map($('#map-canvas')[0], mapOptions);
-        var markers = [];
-        var clickTimeout = null;
+        var map = new google.maps.Map($('#map-canvas')[0], mapOptions),
+            directions = new google.maps.DirectionsService(),
+            markers = [],
+            clickTimeout = null;
 
         $scope.misc.latlng = {
             lat: map.getCenter().lat(),
@@ -44,10 +45,20 @@ angular.module('maps', [])
 
         google.maps.event.addListener(map, 'dblclick', function (e) {
             $timeout.cancel(clickTimeout);
-            markers.push(new google.maps.Marker({
-                map: map,
-                position: e.latLng
-            }));
+            directions.route({
+                origin: e.latLng,
+                destination: e.latLng,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, function (result, status) {
+                var pos = e.latLng;
+                if (status == google.maps.DirectionsStatus.OK) {
+                    pos = result.routes[0].legs[0].start_location;
+                }
+                markers.push(new google.maps.Marker({
+                    map: map,
+                    position: pos
+                }));
+            });
         });
     }
 ]);
