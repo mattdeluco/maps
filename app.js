@@ -10,9 +10,11 @@ angular.module('maps', [])
     '$timeout',
     function ($scope, $timeout) {
 
-        $scope.misc = {
-            title: "Maps"
-        };
+        var directions = new google.maps.DirectionsService(),
+            markers = [],
+            polylines = [],
+            clickTimeout,
+            routingListenerId;
 
         var mapOptions = {
             center: new google.maps.LatLng(46.5220, -84.3451),
@@ -20,16 +22,15 @@ angular.module('maps', [])
             disableDoubleClickZoom: true
         };
 
-        var map = new google.maps.Map($('#map-canvas')[0], mapOptions),
-            directions = new google.maps.DirectionsService(),
-            markers = [],
-            polylines = [],
-            clickTimeout,
-            routingListenerId;
+        var map = new google.maps.Map($('#map-canvas')[0], mapOptions);
 
-        $scope.misc.latlng = {
-            lat: map.getCenter().lat(),
-            lng: map.getCenter().lng()
+        $scope.misc = {
+            title: 'Maps',
+            latlng: {
+                lat: map.getCenter().lat(),
+                lng: map.getCenter().lng()
+            },
+            distance: 0
         };
 
         google.maps.event.addListener(map, 'click', function (e) {
@@ -51,24 +52,28 @@ angular.module('maps', [])
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (result, status) {
 
-                var pos = destination;
-                if (status == google.maps.DirectionsStatus.OK) {
-                    pos = result.routes[0].legs[0].end_location;
+                if (status != google.maps.DirectionsStatus.OK) {
+                    // TODO error?
+                    return;
                 }
 
-                // TODO error rather than pushing marker for e
+                var pos = result.routes[0].legs[0].end_location;
+
                 markers.push(new google.maps.Marker({
                     map: map,
                     position: pos
                 }));
 
-                if (markers.length) {
+                if (markers.length > 1) {
                     polylines.push(new google.maps.Polyline({
                         map: map,
                         path: result.routes[0].overview_path
                     }));
                 }
 
+                $scope.$apply(function () {
+                    $scope.misc.distance += result.routes[0].legs[0].distance.value;
+                });
             });
         };
 
