@@ -70,19 +70,16 @@ angular.module('maps', [])
             return deferred.promise;
         };
 
-        Route.prototype.addLeg = function (latLng, lastLeg) {
-
-            lastLeg = lastLeg || false;
+        Route.prototype.addLeg = function (latLng) {
 
             var route = this,
-                origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng,
-                destination = lastLeg ? route.legs[0].marker.getPosition() : latLng;
+                origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng;
 
-            return this.getDirections(origin, destination).then(
+            return this.getDirections(origin, latLng).then(
                 function (result) {
                     var leg = {};
 
-                    if (lastLeg) {
+                    if (route.legs.length && latLng === route.legs[0].marker.getPosition()) {
                         leg.marker = route.legs[0].marker;
                     } else {
                         leg.marker = new google.maps.Marker({
@@ -105,11 +102,8 @@ angular.module('maps', [])
                 },
                 function (status) {
                     // TODO handle error
+                    return status;
                 });
-        };
-
-        Route.prototype.endRoute = function () {
-            return this.addLeg(null, true);
         };
 
         Route.prototype.popLeg = function () {
@@ -142,8 +136,9 @@ angular.module('maps', [])
 
         $scope.finishRouting = function () {
             map.setOptions({draggableCursor: 'auto'});
+            // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
+            google.maps.event.trigger(map, 'dblclick', {latLng: route.legs[0].marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
-            route.endRoute().then(distanceHandler);
         };
 
         $scope.undoLastLeg = function () {
