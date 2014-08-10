@@ -11,8 +11,7 @@ angular.module('maps', [])
     function ($scope, $timeout) {
 
         var directions = new google.maps.DirectionsService(),
-            markers = [],
-            polylines = [],
+            route,
             clickTimeout,
             routingListenerId;
 
@@ -45,50 +44,78 @@ angular.module('maps', [])
             }, 200);
         });
 
-        var getDirections = function (origin, destination) {
-            directions.route({
+        function Route (map, directions) {
+            this.map = map;
+            this.directions = directions;
+            this.legs = [];
+            this.distance = 0;
+        }
+
+        Route.prototype.getDirections = function (origin, destination, fn) {
+            this.directions.route({
                 origin: origin,
                 destination: destination,
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (result, status) {
+                // TODO error?
+                if (status != google.maps.DirectionsStatus.OK) return;
 
-                if (status != google.maps.DirectionsStatus.OK) {
-                    // TODO error?
-                    return;
-                }
-
-                var pos = result.routes[0].legs[0].end_location;
-
-                markers.push(new google.maps.Marker({
-                    map: map,
-                    position: pos
-                }));
-
-                if (markers.length > 1) {
-                    polylines.push(new google.maps.Polyline({
-                        map: map,
-                        path: result.routes[0].overview_path
-                    }));
-                }
-
-                $scope.$apply(function () {
-                    $scope.misc.distance += result.routes[0].legs[0].distance.value;
-                });
+                return fn(result, status);
             });
+        };
+
+        Route.prototype.addLeg = function (latLng, lastLeg) {
+
+            lastLeg = lastLeg || false;
+
+            var route = this,
+                origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng,
+                destination = lastLeg ? route.legs[0].marker.getPosition() : latLng;
+
+            this.getDirections(origin, destination, function (result, status) {
+                var leg = {};
+
+                if (lastLeg) {
+                    leg.marker = route.legs[0].marker;
+                } else {
+                    leg.marker = new google.maps.Marker({
+                        map: route.map,
+                        position: result.routes[0].legs[0].end_location
+                    });
+                }
+
+                leg.polyline = new google.maps.Polyline({
+                    map: route.map,
+                    path: result.routes[0].overview_path
+                });
+
+                leg.distance = result.routes[0].legs[0].distance.value;
+
+                route.distance += leg.distance;
+                route.legs.push(leg);
+            });
+        };
+
+        Route.prototype.endRoute = function () {
+            this.addLeg(null, true);
+        };
+
+        Route.prototype.popLeg = function () {
+            var leg = this.legs.pop();
+            if (!leg) return;
+
+            leg.marker.setMap(null);
+            leg.polyline.setMap(null);
+            route.distance -= leg.distance;
         };
 
         var routingListener = function (e) {
             $timeout.cancel(clickTimeout);
-
-            var origin = e.latLng;
-            if (markers.length) {
-                origin = markers[markers.length - 1].getPosition();
-            }
-
-            getDirections(origin, e.latLng);
+            route.addLeg(e.latLng);
         };
 
         $scope.startRouting = function () {
+            route = new Route(map, directions);
             map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
         };
@@ -96,7 +123,11 @@ angular.module('maps', [])
         $scope.finishRouting = function () {
             map.setOptions({draggableCursor: 'auto'});
             google.maps.event.removeListener(routingListenerId);
-            getDirections(markers[markers.length - 1].getPosition(), markers[0].getPosition());
+            route.endRoute();
+        };
+
+        $scope.undoLastLeg = function () {
+            route.popLeg();
         };
 
     }

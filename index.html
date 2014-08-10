@@ -21,6 +21,7 @@
         <p>Long: {{misc.latlng.lng | number:4}}</p>
         <button type="button" class="btn btn-success" ng-click="startRouting()">Start</button>
         <button type="button" class="btn btn-danger" ng-click="finishRouting()">Finish</button>
+        <button type="button" class="btn btn-warning" ng-click="undoLastLeg()">Undo</button>
         <p>Distance: {{misc.distance / 1000 | number:3}} km</p>
       </div>
       <div class="col-md-8">
