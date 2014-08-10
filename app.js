@@ -8,7 +8,8 @@ angular.module('maps', [])
 .controller('MapsCtrl', [
     '$scope',
     '$timeout',
-    function ($scope, $timeout) {
+    '$q',
+    function ($scope, $timeout, $q) {
 
         var directions = new google.maps.DirectionsService(),
             route,
@@ -51,17 +52,22 @@ angular.module('maps', [])
             this.distance = 0;
         }
 
-        Route.prototype.getDirections = function (origin, destination, fn) {
+        Route.prototype.getDirections = function (origin, destination) {
+            var deferred = $q.defer();
+
             this.directions.route({
                 origin: origin,
                 destination: destination,
                 travelMode: google.maps.TravelMode.DRIVING
             }, function (result, status) {
-                // TODO error?
-                if (status != google.maps.DirectionsStatus.OK) return;
-
-                return fn(result, status);
+                if (status != google.maps.DirectionsStatus.OK) {
+                    deferred.reject(status);
+                } else {
+                    deferred.resolve(result);
+                }
             });
+
+            return deferred.promise;
         };
 
         Route.prototype.addLeg = function (latLng, lastLeg) {
@@ -72,32 +78,38 @@ angular.module('maps', [])
                 origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng,
                 destination = lastLeg ? route.legs[0].marker.getPosition() : latLng;
 
-            this.getDirections(origin, destination, function (result, status) {
-                var leg = {};
+            return this.getDirections(origin, destination).then(
+                function (result) {
+                    var leg = {};
 
-                if (lastLeg) {
-                    leg.marker = route.legs[0].marker;
-                } else {
-                    leg.marker = new google.maps.Marker({
+                    if (lastLeg) {
+                        leg.marker = route.legs[0].marker;
+                    } else {
+                        leg.marker = new google.maps.Marker({
+                            map: route.map,
+                            position: result.routes[0].legs[0].end_location
+                        });
+                    }
+
+                    leg.polyline = new google.maps.Polyline({
                         map: route.map,
-                        position: result.routes[0].legs[0].end_location
+                        path: result.routes[0].overview_path
                     });
-                }
 
-                leg.polyline = new google.maps.Polyline({
-                    map: route.map,
-                    path: result.routes[0].overview_path
+                    leg.distance = result.routes[0].legs[0].distance.value;
+
+                    route.distance += leg.distance;
+                    route.legs.push(leg);
+
+                    return route.distance;
+                },
+                function (status) {
+                    // TODO handle error
                 });
-
-                leg.distance = result.routes[0].legs[0].distance.value;
-
-                route.distance += leg.distance;
-                route.legs.push(leg);
-            });
         };
 
         Route.prototype.endRoute = function () {
-            this.addLeg(null, true);
+            return this.addLeg(null, true);
         };
 
         Route.prototype.popLeg = function () {
@@ -107,11 +119,19 @@ angular.module('maps', [])
             leg.marker.setMap(null);
             leg.polyline.setMap(null);
             route.distance -= leg.distance;
+
+            return route.distance;
+        };
+
+
+        var distanceHandler = function (distance) {
+            // TODO Figure out why this works without $scope.$apply()
+            $scope.misc.distance = distance;
         };
 
         var routingListener = function (e) {
             $timeout.cancel(clickTimeout);
-            route.addLeg(e.latLng);
+            route.addLeg(e.latLng).then(distanceHandler);
         };
 
         $scope.startRouting = function () {
@@ -123,11 +143,11 @@ angular.module('maps', [])
         $scope.finishRouting = function () {
             map.setOptions({draggableCursor: 'auto'});
             google.maps.event.removeListener(routingListenerId);
-            route.endRoute();
+            route.endRoute().then(distanceHandler);
         };
 
         $scope.undoLastLeg = function () {
-            route.popLeg();
+            distanceHandler(route.popLeg());
         };
 
     }
