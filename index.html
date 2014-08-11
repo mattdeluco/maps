@@ -15,14 +15,32 @@
 
   <div class="container" ng-controller="MapsCtrl">
     <div class="row">
-      <div class="col-md-2 col-md-offset-1">
-        <h1>{{misc.title}}</h1>
-        <p>Lat: {{misc.latlng.lat | number:4}}</p>
-        <p>Long: {{misc.latlng.lng | number:4}}</p>
-        <button type="button" class="btn btn-success" ng-click="startRouting()">Start</button>
-        <button type="button" class="btn btn-danger" ng-click="finishRouting()">Finish</button>
-        <button type="button" class="btn btn-warning" ng-click="undoLastLeg()">Undo</button>
-        <p>Distance: {{misc.distance / 1000 | number:3}} km</p>
+      <div class="col-md-4">
+        <h1>Maps</h1>
+        <p>Lat: {{misc.latLng.lat() | number:4}}</p>
+        <p>Long: {{misc.latLng.lng() | number:4}}</p>
+        <button type="button" class="btn btn-success" ng-click="startRouting()" ng-disabled="misc.currentRoute">New Route</button>
+        <table class="table table-condensed table-hover">
+          <thead>
+            <tr>
+              <td>Route Name</td>
+              <td>Distance</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="route in misc.routes" ng-class="{active: misc.currentRoute == route.mapRoute}">
+              <td><input name="routeName" ng-model="route.name" type="text"></td>
+              <td>{{route.mapRoute.distance / 1000 | number:3}} km</td>
+              <td>
+                <button type="button" class="btn btn-default btn-xs" ng-click="startRouting(route.mapRoute)" ng-hide="misc.currentRoute == route.mapRoute" ng-disabled="misc.currentRoute">Edit</button>
+                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg()" ng-show="misc.currentRoute == route.mapRoute">Undo</button>
+              </td>
+              <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting()" ng-disabled="misc.currentRoute != route.mapRoute">Finish</button></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div class="col-md-8">
         <div id="map-canvas"></div>

@@ -69,7 +69,10 @@ MapRoute.prototype.popLeg = function () {
     var leg = this.legs.pop();
     if (!leg) return;
 
-    leg.marker.setMap(null);
+    // Don't remove the marker on a finished route, where start marker == finish marker.
+    if (this.legs.length && leg.marker != this.legs[0].marker) {
+        leg.marker.setMap(null);
+    }
     leg.polyline.setMap(null);
 
     return this.distance -= leg.distance;

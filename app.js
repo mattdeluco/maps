@@ -19,38 +19,36 @@ angular.module('maps', [])
             },
             map = new google.maps.Map($('#map-canvas')[0], mapOptions),
             directions = new google.maps.DirectionsService(),
-            route;
+            currentRoute;
 
         $scope.misc = {
-            title: 'Maps',
-            latlng: {
-                lat: map.getCenter().lat(),
-                lng: map.getCenter().lng()
-            },
-            distance: 0
+            latLng: map.getCenter(),
+            routes: [],
+            currentRoute: null
         };
 
         google.maps.event.addListener(map, 'click', function (e) {
             clickTimeout = $timeout(function () {
                 map.panTo(e.latLng);
                 $scope.$apply(function () {
-                    $scope.misc.latlng = {
-                        lat: e.latLng.lat(),
-                        lng: e.latLng.lng()
-                    };
+                    $scope.misc.latLng = e.latLng;
                 });
             }, 200);
         });
 
         var routingListener = function (e) {
             $timeout.cancel(clickTimeout);
-            route.addLeg(e.latLng).then(function (d) {
-                $scope.$apply(function () { $scope.misc.distance = d; });
+            currentRoute.addLeg(e.latLng).then(function () {
+                $scope.$digest();
             });
         };
 
-        $scope.startRouting = function () {
-            route = new MapRoute(map, directions);
+        $scope.startRouting = function (route) {
+            currentRoute = route || new MapRoute(map, directions);
+            $scope.misc.currentRoute = currentRoute;
+            if (!route) {
+                $scope.misc.routes.push({mapRoute: currentRoute});
+            }
             map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
         };
@@ -60,12 +58,15 @@ angular.module('maps', [])
             // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
             // I guess it's ok, since the handler only expects an object with "latLng" property?
             // But what if I want stop()?
-            google.maps.event.trigger(map, 'dblclick', {latLng: route.legs[0].marker.getPosition()});
+            google.maps.event.trigger(map, 'dblclick', {latLng: currentRoute.legs[0].marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
+            currentRoute = null;
+            $scope.misc.currentRoute = null;
+            $scope.misc.latLng = map.getCenter();
         };
 
         $scope.undoLastLeg = function () {
-            $scope.misc.distance = route.popLeg();
+            currentRoute.popLeg();
         };
 
     }
