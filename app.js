@@ -8,21 +8,18 @@ angular.module('maps', [])
 .controller('MapsCtrl', [
     '$scope',
     '$timeout',
-    '$q',
-    function ($scope, $timeout, $q) {
+    function ($scope, $timeout) {
 
-        var directions = new google.maps.DirectionsService(),
-            route,
-            clickTimeout,
-            routingListenerId;
-
-        var mapOptions = {
-            center: new google.maps.LatLng(46.5220, -84.3451),
-            zoom: 15,
-            disableDoubleClickZoom: true
-        };
-
-        var map = new google.maps.Map($('#map-canvas')[0], mapOptions);
+        var clickTimeout,
+            routingListenerId,
+            mapOptions = {
+                center: new google.maps.LatLng(46.5220, -84.3451),
+                zoom: 15,
+                disableDoubleClickZoom: true
+            },
+            map = new google.maps.Map($('#map-canvas')[0], mapOptions),
+            directions = new google.maps.DirectionsService(),
+            route;
 
         $scope.misc = {
             title: 'Maps',
@@ -45,91 +42,15 @@ angular.module('maps', [])
             }, 200);
         });
 
-        function Route (map, directions) {
-            this.map = map;
-            this.directions = directions;
-            this.legs = [];
-            this.distance = 0;
-        }
-
-        Route.prototype.getDirections = function (origin, destination) {
-            var deferred = $q.defer();
-
-            this.directions.route({
-                origin: origin,
-                destination: destination,
-                travelMode: google.maps.TravelMode.DRIVING
-            }, function (result, status) {
-                if (status != google.maps.DirectionsStatus.OK) {
-                    deferred.reject(status);
-                } else {
-                    deferred.resolve(result);
-                }
-            });
-
-            return deferred.promise;
-        };
-
-        Route.prototype.addLeg = function (latLng) {
-
-            var route = this,
-                origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng;
-
-            return this.getDirections(origin, latLng).then(
-                function (result) {
-                    var leg = {};
-
-                    if (route.legs.length && latLng === route.legs[0].marker.getPosition()) {
-                        leg.marker = route.legs[0].marker;
-                    } else {
-                        leg.marker = new google.maps.Marker({
-                            map: route.map,
-                            position: result.routes[0].legs[0].end_location
-                        });
-                    }
-
-                    leg.polyline = new google.maps.Polyline({
-                        map: route.map,
-                        path: result.routes[0].overview_path
-                    });
-
-                    leg.distance = result.routes[0].legs[0].distance.value;
-
-                    route.distance += leg.distance;
-                    route.legs.push(leg);
-
-                    return route.distance;
-                },
-                function (status) {
-                    // TODO handle error
-                    return status;
-                });
-        };
-
-        Route.prototype.popLeg = function () {
-            var leg = this.legs.pop();
-            if (!leg) return;
-
-            leg.marker.setMap(null);
-            leg.polyline.setMap(null);
-            route.distance -= leg.distance;
-
-            return route.distance;
-        };
-
-
-        var distanceHandler = function (distance) {
-            // TODO Figure out why this works without $scope.$apply()
-            $scope.misc.distance = distance;
-        };
-
         var routingListener = function (e) {
             $timeout.cancel(clickTimeout);
-            route.addLeg(e.latLng).then(distanceHandler);
+            route.addLeg(e.latLng).then(function (d) {
+                $scope.$apply(function () { $scope.misc.distance = d; });
+            });
         };
 
         $scope.startRouting = function () {
-            route = new Route(map, directions);
+            route = new MapRoute(map, directions);
             map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
         };
@@ -137,12 +58,14 @@ angular.module('maps', [])
         $scope.finishRouting = function () {
             map.setOptions({draggableCursor: 'auto'});
             // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
+            // I guess it's ok, since the handler only expects an object with "latLng" property?
+            // But what if I want stop()?
             google.maps.event.trigger(map, 'dblclick', {latLng: route.legs[0].marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
         };
 
         $scope.undoLastLeg = function () {
-            distanceHandler(route.popLeg());
+            $scope.misc.distance = route.popLeg();
         };
 
     }
