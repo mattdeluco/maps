@@ -18,13 +18,19 @@ angular.module('maps', [])
                 disableDoubleClickZoom: true
             },
             map = new google.maps.Map($('#map-canvas')[0], mapOptions),
-            directions = new google.maps.DirectionsService(),
-            currentRoute;
+            directions = new google.maps.DirectionsService();
+
+        var Route = function (mapRoute) {
+            this.mapRoute = mapRoute;
+            this.name = '';
+            this.show = true;
+            this.currentRoute = true;
+        };
 
         $scope.misc = {
             latLng: map.getCenter(),
             routes: [],
-            currentRoute: null
+            routing: false
         };
 
         google.maps.event.addListener(map, 'click', function (e) {
@@ -36,37 +42,52 @@ angular.module('maps', [])
             }, 200);
         });
 
-        var routingListener = function (e) {
-            $timeout.cancel(clickTimeout);
-            currentRoute.addLeg(e.latLng).then(function () {
-                $scope.$digest();
+        $scope.startRouting = function (route) {
+            $scope.misc.routing = true;
+
+            if (!route) {
+                route = new Route(new MapRoute(map, directions));
+                $scope.misc.routes.push(route);
+            }
+
+            route.currentRoute = true;
+
+            map.setOptions({draggableCursor: 'crosshair'});
+            routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
+                $timeout.cancel(clickTimeout);
+                route.mapRoute.addLeg(e.latLng).then(function () {
+                    $scope.$digest();
+                });
             });
         };
 
-        $scope.startRouting = function (route) {
-            currentRoute = route || new MapRoute(map, directions);
-            $scope.misc.currentRoute = currentRoute;
-            if (!route) {
-                $scope.misc.routes.push({mapRoute: currentRoute});
-            }
-            map.setOptions({draggableCursor: 'crosshair'});
-            routingListenerId = google.maps.event.addListener(map, 'dblclick', routingListener);
-        };
-
-        $scope.finishRouting = function () {
+        $scope.finishRouting = function (route) {
             map.setOptions({draggableCursor: 'auto'});
             // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
             // I guess it's ok, since the handler only expects an object with "latLng" property?
             // But what if I want stop()?
-            google.maps.event.trigger(map, 'dblclick', {latLng: currentRoute.legs[0].marker.getPosition()});
+            google.maps.event.trigger(map, 'dblclick', {latLng: route.mapRoute.legs[0].marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
-            currentRoute = null;
-            $scope.misc.currentRoute = null;
             $scope.misc.latLng = map.getCenter();
+            route.currentRoute = false;
+            $scope.misc.routing = false;
         };
 
-        $scope.undoLastLeg = function () {
-            currentRoute.popLeg();
+        $scope.undoLastLeg = function (route) {
+            route.mapRoute.popLeg();
+        };
+
+        $scope.showChanged = function (route) {
+            if (route.show) {
+                route.mapRoute.show();
+            } else {
+                route.mapRoute.hide();
+            }
+        };
+
+        $scope.deleteRoute = function (route) {
+            route.mapRoute.clear();
+            _.remove($scope.misc.routes, route);
         };
 
     }

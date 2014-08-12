@@ -70,10 +70,31 @@ MapRoute.prototype.popLeg = function () {
     if (!leg) return;
 
     // Don't remove the marker on a finished route, where start marker == finish marker.
-    if (this.legs.length && leg.marker != this.legs[0].marker) {
+    if (!this.legs.length || leg.marker != this.legs[0].marker) {
         leg.marker.setMap(null);
     }
     leg.polyline.setMap(null);
 
     return this.distance -= leg.distance;
+};
+
+MapRoute.prototype.setAllMap = function (map) {
+    for (var i = 0; i < this.legs.length; i++) {
+        this.legs[i].marker.setMap(map);
+        this.legs[i].polyline.setMap(map);
+    }
+};
+
+MapRoute.prototype.hide = function () {
+    this.setAllMap(null);
+};
+
+MapRoute.prototype.show = function () {
+    this.setAllMap(this.map);
+};
+
+MapRoute.prototype.clear = function () {
+    this.hide();
+    this.legs = [];
+    this.distance = 0;
 };

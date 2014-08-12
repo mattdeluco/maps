@@ -15,34 +15,36 @@
 
   <div class="container" ng-controller="MapsCtrl">
     <div class="row">
-      <div class="col-md-4">
+      <div class="col-md-5">
         <h1>Maps</h1>
         <p>Lat: {{misc.latLng.lat() | number:4}}</p>
         <p>Long: {{misc.latLng.lng() | number:4}}</p>
-        <button type="button" class="btn btn-success" ng-click="startRouting()" ng-disabled="misc.currentRoute">New Route</button>
+        <button type="button" class="btn btn-success" ng-click="startRouting()" ng-disabled="misc.routing">New Route</button>
         <table class="table table-condensed table-hover">
           <thead>
             <tr>
+              <td>Show</td>
               <td>Route Name</td>
               <td>Distance</td>
-              <td></td>
-              <td></td>
+              <td colspan="3" style="text-align: center">Edit</td>
             </tr>
           </thead>
           <tbody>
-            <tr ng-repeat="route in misc.routes" ng-class="{active: misc.currentRoute == route.mapRoute}">
+            <tr ng-repeat="route in misc.routes" ng-class="{active: route.currentRoute}">
+              <td><input type="checkbox" checked="checked" ng-model="route.show" ng-change="showChanged(route)"></td>
               <td><input name="routeName" ng-model="route.name" type="text"></td>
               <td>{{route.mapRoute.distance / 1000 | number:3}} km</td>
               <td>
-                <button type="button" class="btn btn-default btn-xs" ng-click="startRouting(route.mapRoute)" ng-hide="misc.currentRoute == route.mapRoute" ng-disabled="misc.currentRoute">Edit</button>
-                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg()" ng-show="misc.currentRoute == route.mapRoute">Undo</button>
+                <button type="button" class="btn btn-primary btn-xs" ng-click="startRouting(route)" ng-hide="route.currentRoute">Edit</button>
+                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg(route)" ng-show="route.currentRoute">Undo</button>
               </td>
-              <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting()" ng-disabled="misc.currentRoute != route.mapRoute">Finish</button></td>
+              <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting(route)" ng-disabled="!route.currentRoute">Finish</button></td>
+              <td><button class="btn btn-xs btn-danger" ng-click="deleteRoute(route)"><span class="glyphicon glyphicon-remove"></span></button></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div class="col-md-8">
+      <div class="col-md-7">
         <div id="map-canvas"></div>
       </div>
     </div>
@@ -51,6 +53,7 @@
   <script src="lib/jquery/dist/jquery.min.js"></script>
   <script src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
   <script src="lib/angular/angular.min.js"></script>
+  <script src="lib/lodash/dist/lodash.min.js"></script>
 
   <script src="lib/q/q.js"></script>
   <script src="maps.js"></script>
