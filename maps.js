@@ -38,18 +38,38 @@ MapRoute.prototype.addLeg = function (latLng) {
         function (result) {
             var leg = {};
 
-            if (route.legs.length && latLng === route.legs[0].marker.getPosition()) {
+            // Start
+            if (!route.legs.length) {
+                leg.marker = new google.maps.Marker({
+                    map: route.map,
+                    position: result.routes[0].legs[0].end_location,
+                    icon: 'icons/green.png'
+                });
+            // Finish
+            } else if (route.legs.length && latLng === route.legs[0].marker.getPosition()) {
                 leg.marker = route.legs[0].marker;
+            // Intermediate
             } else {
                 leg.marker = new google.maps.Marker({
                     map: route.map,
-                    position: result.routes[0].legs[0].end_location
+                    draggable: true,
+                    position: result.routes[0].legs[0].end_location,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 5,
+                        strokeWeight: 2,
+                        fillColor: 'white',
+                        fillOpacity: 1
+                    }
                 });
             }
 
             leg.polyline = new google.maps.Polyline({
                 map: route.map,
-                path: result.routes[0].overview_path
+                path: result.routes[0].overview_path,
+                strokeColor: '#009900',
+                strokeOpacity: 0.4,
+                strokeWeight: 5
             });
 
             leg.distance = result.routes[0].legs[0].distance.value;

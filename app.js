@@ -43,6 +43,7 @@ angular.module('maps', [])
         });
 
         $scope.startRouting = function (route) {
+
             $scope.misc.routing = true;
 
             if (!route) {
@@ -88,6 +89,10 @@ angular.module('maps', [])
         $scope.deleteRoute = function (route) {
             route.mapRoute.clear();
             _.remove($scope.misc.routes, route);
+            if (route.currentRoute) {
+                $scope.misc.latLng = map.getCenter();
+                $scope.misc.routing = false;
+            }
         };
 
     }
