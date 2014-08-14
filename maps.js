@@ -3,11 +3,12 @@
 * Created by mdeluco on 2014-08-09.
 */
 
-function MapRoute (map, directions) {
+function MapRoute (map, directions, polylineOptions) {
     this.map = map;
     this.directions = directions;
     this.legs = [];
     this.distance = 0;
+    this.polylineOptions = polylineOptions || {};
 }
 
 MapRoute.prototype.getDirections = function (origin, destination) {
@@ -36,24 +37,19 @@ MapRoute.prototype.addLeg = function (latLng) {
 
     return this.getDirections(origin, latLng).then(
         function (result) {
-            var leg = {};
+            var leg = {},
+                markerOptions = {};
 
-            // Start
             if (!route.legs.length) {
-                leg.marker = new google.maps.Marker({
-                    map: route.map,
-                    position: result.routes[0].legs[0].end_location,
-                    icon: 'icons/green.png'
-                });
-            // Finish
-            } else if (route.legs.length && latLng === route.legs[0].marker.getPosition()) {
-                leg.marker = route.legs[0].marker;
-            // Intermediate
+                markerOptions.icon = 'icons/green.png';
+            } else if (latLng.equals(route.legs[0].marker.getPosition())) {
+                markerOptions.map = null;
             } else {
-                leg.marker = new google.maps.Marker({
-                    map: route.map,
-                    draggable: true,
-                    position: result.routes[0].legs[0].end_location,
+                markerOptions.icon = 'icons/red.png';
+            }
+
+            if (route.legs.length > 1) {
+                route.legs[route.legs.length - 1].marker.setOptions({
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
                         scale: 5,
@@ -64,20 +60,24 @@ MapRoute.prototype.addLeg = function (latLng) {
                 });
             }
 
-            leg.polyline = new google.maps.Polyline({
+            leg.marker = new google.maps.Marker(_.extend({
                 map: route.map,
-                path: result.routes[0].overview_path,
-                strokeColor: '#009900',
-                strokeOpacity: 0.4,
-                strokeWeight: 5
-            });
+                position: result.routes[0].legs[0].end_location
+            }, markerOptions));
 
-            leg.distance = result.routes[0].legs[0].distance.value;
+            if (route.legs.length > 0) {
+                leg.polyline = new google.maps.Polyline(_.extend(route.polylineOptions, {
+                    map: route.map,
+                    path: result.routes[0].overview_path
+                }));
 
-            route.distance += leg.distance;
+                leg.distance = result.routes[0].legs[0].distance.value;
+                route.distance += leg.distance;
+            }
+
             route.legs.push(leg);
 
-            return route.distance;
+            return leg;
         },
         function (status) {
             // TODO handle error
@@ -93,15 +93,17 @@ MapRoute.prototype.popLeg = function () {
     if (!this.legs.length || leg.marker != this.legs[0].marker) {
         leg.marker.setMap(null);
     }
-    leg.polyline.setMap(null);
+    if (leg.polyline) leg.polyline.setMap(null);
 
     return this.distance -= leg.distance;
 };
 
 MapRoute.prototype.setAllMap = function (map) {
+    var leg;
     for (var i = 0; i < this.legs.length; i++) {
-        this.legs[i].marker.setMap(map);
-        this.legs[i].polyline.setMap(map);
+        leg = this.legs[i];
+        leg.marker.setMap(map);
+        if (leg.polyline) leg.polyline.setMap(map);
     }
 };
 
