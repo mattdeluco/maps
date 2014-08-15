@@ -56,7 +56,7 @@ angular.module('maps', [])
             map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
                 $timeout.cancel(clickTimeout);
-                route.mapRoute.addLeg(e.latLng).then(function () {
+                route.mapRoute.append(e.latLng).then(function () {
                     $scope.$digest();
                 });
             });
