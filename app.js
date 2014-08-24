@@ -18,18 +18,12 @@ angular.module('maps', [])
                 disableDoubleClickZoom: true
             },
             map = new google.maps.Map($('#map-canvas')[0], mapOptions),
-            directions = new google.maps.DirectionsService();
+            directions = new google.maps.DirectionsService(),
+            mapRoutes = [];
 
-        var Route = function (mapRoute) {
-            this.mapRoute = mapRoute;
-            this.name = '';
-            this.show = true;
-            this.currentRoute = true;
-        };
-
+        $scope.routes = mapRoutes;
         $scope.misc = {
             latLng: map.getCenter(),
-            routes: [],
             routing: false
         };
 
@@ -42,24 +36,25 @@ angular.module('maps', [])
             }, 200);
         });
 
-        $scope.startRouting = function (route) {
+        $scope.startRouting = function (mapRoute) {
 
             $scope.misc.routing = true;
 
-            if (!route) {
-                route = new Route(new MapRoute(map, directions));
-                $scope.misc.routes.push(route);
-            }
-
-            route.currentRoute = true;
-
             map.setOptions({draggableCursor: 'crosshair'});
+
             routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
                 $timeout.cancel(clickTimeout);
-                route.mapRoute.append(e.latLng).then(function () {
-                    $scope.$digest();
-                });
+
+                if (!mapRoute) {
+                    mapRoute = new MapRoute(e.latLng, map, directions);
+                    mapRoutes.push(mapRoute);
+                } else {
+                    mapRoute.mapRoute.append(e.latLng).then(function () {
+                        $scope.$digest();
+                    });
+                }
             });
+
         };
 
         $scope.finishRouting = function (route) {
@@ -76,14 +71,6 @@ angular.module('maps', [])
 
         $scope.undoLastLeg = function (route) {
             route.mapRoute.popLeg();
-        };
-
-        $scope.showChanged = function (route) {
-            if (route.show) {
-                route.mapRoute.show();
-            } else {
-                route.mapRoute.hide();
-            }
         };
 
         $scope.deleteRoute = function (route) {

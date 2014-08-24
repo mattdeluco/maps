@@ -30,8 +30,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr ng-repeat="route in misc.routes" ng-class="{active: route.currentRoute}">
-              <td><input type="checkbox" checked="checked" ng-model="route.show" ng-change="showChanged(route)"></td>
+            <tr ng-repeat="route in routes" ng-class="{active: route.currentRoute}">
+              <td><input type="checkbox" checked="checked" ng-change="route.toggleVisible()"></td>
               <td><input name="routeName" ng-model="route.name" type="text"></td>
               <td>{{route.mapRoute.distance / 1000 | number:3}} km</td>
               <td>

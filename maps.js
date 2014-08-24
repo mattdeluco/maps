@@ -3,14 +3,14 @@
 * Created by mdeluco on 2014-08-09.
 */
 
-function MapRoute (map, directions, styleOptions) {
+
+function MapRoute (startPos, map, directions, styleOptions) {
     this.map = map;
     this.directions = directions;
     this.distance = 0;
 
     this.name = '';
     this.visible = true;
-    this.legs = [];
 
     styleOptions = styleOptions || {};
     this.polylineOptions = styleOptions.polylineOptions || {};
@@ -35,58 +35,74 @@ function MapRoute (map, directions, styleOptions) {
         draggable: true,
         icon: 'icons/red.png'
     };
-    this.styleOptions = styleOptions;
-}
 
-MapRoute.prototype.append = function (latLng) {
-
-    var prev = this.legs.length ? this.legs[this.legs.length - 1] : null,
-        origin = prev ? prev.marker.getPosition() : latLng;
-
-    var isStartPosition = this.legs.length && latLng.equals(this.legs[0].marker.getPosition()),
-        vertex = isStartPosition ? this.legs[0] : {};
-
-    var markerOptions = this.legs.length ? this.finishMarkerOptions : this.startMarkerOptions;
-
+    var startVertex = {distance: 0};
+    this.legs = [startVertex];
     var route = this;
-
-    var promise = this.getDirections(origin, latLng).then(
+    this.getDirections(startPos, startPos).then(
         function (result) {
-
-            if (!isStartPosition) {
-                vertex.marker = new google.maps.Marker(_.extend(markerOptions, {
-                    position: result.routes[0].legs[0].end_location
-                }));
-            }
-
-            if (prev) {
-
-                if (route.legs.length > 2) prev.marker.setOptions(route.markerOptions);
-
-                vertex.line_in = new google.maps.Polyline(_.extend(route.polylineOptions, {
-                    map: route.map,
-                    path: result.routes[0].overview_path
-                }));
-                prev.line_out = vertex.line_in;
-                vertex.prev = prev;
-
-                vertex.distance = result.routes[0].legs[0].distance.value;
-                route.distance += vertex.distance;
-            }
-
-            return vertex;
-
+            startVertex.marker = new google.maps.Marker(_.extend(route.startMarkerOptions, {
+                position: result.routes[0].legs[0].end_location
+            }));
         },
         function (status) {
             return status;
         }
     );
 
-    promise.then(
-        function (vertex) {
-            google.maps.addListener(vertex.marker, 'dragend', function () {
+}
 
+MapRoute.prototype.append = function (latLng) {
+
+    var route = this,
+        prev = this.legs[this.legs.length - 1],
+        origin = prev.marker.getPosition(),
+        isStartPosition = latLng.equals(this.legs[0].marker.getPosition()),
+        vertex = isStartPosition ? this.legs[0] : {};
+
+    var promise = this.getDirections(origin, latLng).then(
+        function (result) {
+
+            if (!vertex.marker) {
+                vertex.marker = new google.maps.Marker(_.extend(route.finishMarkerOptions, {
+                    position: result.routes[0].legs[0].end_location
+                }));
+            }
+
+            if (route.legs.length > 2) prev.marker.setOptions(route.markerOptions);
+
+            vertex.line_in = new google.maps.Polyline(_.extend(route.polylineOptions, {
+                map: route.map,
+                path: result.routes[0].overview_path
+            }));
+
+            vertex.prev = prev;
+            vertex.prev.next = vertex;
+
+            vertex.length = result.routes[0].legs[0].distance.value;
+            route.distance += vertex.distance;
+
+            google.maps.addListener(vertex.marker, 'dragend', function () {
+                route.getDirections(prev.marker.getPosition(), vertex.marker.getPosition()).then(
+                    function (result) {
+                        vertex.line_in.setOptions({path: result.routes[0].overview_path});
+                    }
+                );
+
+                if (vertex.next) {
+                    route.getDirections(vertex.marker.getPosition(), vertex.next.marker.getPosition()).then(
+                        function (result) {
+                            vertex.next.line_in.setOptions({path: result.routes[0].overview_path});
+                        }
+                    );
+                }
             });
+
+            return vertex;
+
+        },
+        function (status) {
+            return status;
         }
     );
 
@@ -97,7 +113,6 @@ MapRoute.prototype.append = function (latLng) {
 };
 
 MapRoute.prototype.getDirections = function (origin, destination) {
-    // TODO Should this be injected?
     var deferred = Q.defer();
 
     this.directions.route({
