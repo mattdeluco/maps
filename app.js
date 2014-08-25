@@ -39,20 +39,16 @@ angular.module('maps', [])
         $scope.startRouting = function (mapRoute) {
 
             $scope.misc.routing = true;
-
             map.setOptions({draggableCursor: 'crosshair'});
+
+            mapRoute = new MapRoute(map, directions);
+            mapRoutes.push(mapRoute);
 
             routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
                 $timeout.cancel(clickTimeout);
-
-                if (!mapRoute) {
-                    mapRoute = new MapRoute(e.latLng, map, directions);
-                    mapRoutes.push(mapRoute);
-                } else {
-                    mapRoute.mapRoute.append(e.latLng).then(function () {
-                        $scope.$digest();
-                    });
-                }
+                mapRoute.append(e.latLng).then(function () {
+                    $scope.$digest();
+                });
             });
 
         };

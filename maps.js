@@ -4,16 +4,21 @@
 */
 
 
-function MapRoute (startPos, map, directions, styleOptions) {
+function MapRoute (map, directions, styleOptions) {
     this.map = map;
     this.directions = directions;
     this.distance = 0;
+
+    this.head = this.tail = null;
+    this.legs = 0;
 
     this.name = '';
     this.visible = true;
 
     styleOptions = styleOptions || {};
-    this.polylineOptions = styleOptions.polylineOptions || {};
+    this.polylineOptions = styleOptions.polylineOptions || {
+        map: this.map
+    };
     this.markerOptions = styleOptions.markerOptions || {
         map: this.map,
         draggable: true,
@@ -36,79 +41,68 @@ function MapRoute (startPos, map, directions, styleOptions) {
         icon: 'icons/red.png'
     };
 
-    var startVertex = {distance: 0};
-    this.legs = [startVertex];
-    var route = this;
-    this.getDirections(startPos, startPos).then(
-        function (result) {
-            startVertex.marker = new google.maps.Marker(_.extend(route.startMarkerOptions, {
-                position: result.routes[0].legs[0].end_location
-            }));
-        },
-        function (status) {
-            return status;
-        }
-    );
-
 }
+
 
 MapRoute.prototype.append = function (latLng) {
 
     var route = this,
-        prev = this.legs[this.legs.length - 1],
-        origin = prev.marker.getPosition(),
-        isStartPosition = latLng.equals(this.legs[0].marker.getPosition()),
-        vertex = isStartPosition ? this.legs[0] : {};
+        origin = latLng,
+        vertex = {
+            marker: new google.maps.Marker(this.finishMarkerOptions),
+            line_in: new google.maps.Polyline(this.polylineOptions),
+            length: 0
+        };
 
-    var promise = this.getDirections(origin, latLng).then(
-        function (result) {
-
-            if (!vertex.marker) {
-                vertex.marker = new google.maps.Marker(_.extend(route.finishMarkerOptions, {
-                    position: result.routes[0].legs[0].end_location
-                }));
-            }
-
-            if (route.legs.length > 2) prev.marker.setOptions(route.markerOptions);
-
-            vertex.line_in = new google.maps.Polyline(_.extend(route.polylineOptions, {
-                map: route.map,
-                path: result.routes[0].overview_path
-            }));
-
-            vertex.prev = prev;
-            vertex.prev.next = vertex;
-
-            vertex.length = result.routes[0].legs[0].distance.value;
-            route.distance += vertex.distance;
-
-            google.maps.addListener(vertex.marker, 'dragend', function () {
-                route.getDirections(prev.marker.getPosition(), vertex.marker.getPosition()).then(
-                    function (result) {
-                        vertex.line_in.setOptions({path: result.routes[0].overview_path});
-                    }
-                );
-
-                if (vertex.next) {
-                    route.getDirections(vertex.marker.getPosition(), vertex.next.marker.getPosition()).then(
-                        function (result) {
-                            vertex.next.line_in.setOptions({path: result.routes[0].overview_path});
-                        }
-                    );
-                }
-            });
-
-            return vertex;
-
-        },
-        function (status) {
-            return status;
+    if (this.legs > 0) {
+        origin = this.tail.marker.getPosition();
+        if (latLng.equals(this.head.marker.getPosition())) {
+            vertex = this.head;
         }
-    );
+        this.tail.next = vertex;
+        vertex.prev = this.tail;
+        this.tail = vertex;
+    } else {
+        this.head = vertex;
+        this.tail = vertex;
+    }
 
-    route.legs.push(vertex);
+    this.legs++;
 
-    return promise;
+    if (vertex === route.head) {
+        vertex.marker.setOptions(route.startMarkerOptions);
+    }
+    if (vertex.prev && vertex.prev !== route.head) {
+        vertex.prev.marker.setOptions(route.markerOptions);
+    }
+
+    function updateVertex(vertex, origin, destination) {
+        return route.getDirections(origin, destination).then(
+            function (directions) {
+                vertex.marker.setPosition(directions.routes[0].legs[0].end_location);
+                vertex.line_in.setOptions({path: directions.routes[0].overview_path});
+
+                route.distance -= vertex.length;
+                vertex.length = directions.routes[0].legs[0].distance.value;
+                route.distance += vertex.length;
+
+                return directions.routes[0].legs[0].end_location;
+            }
+        );
+    }
+
+    google.maps.event.addListener(vertex.marker, 'dragend', function () {
+        var latLng = vertex.marker.getPosition();
+        var origin = vertex.prev ? vertex.prev.marker.getPosition() : latLng;
+        updateVertex(vertex, origin, latLng).then(
+            function (origin) {
+                if (!vertex.next) return;
+                return updateVertex(vertex.next, origin, vertex.next.marker.getPosition());
+            }
+        );
+    });
+
+    return updateVertex(vertex, origin, latLng);
 
 };
 
@@ -130,106 +124,28 @@ MapRoute.prototype.getDirections = function (origin, destination) {
     return deferred.promise;
 };
 
-/*
-MapRoute.prototype.addLeg = function (latLng) {
 
-    var route = this,
-        origin = route.legs.length ? route.legs[route.legs.length - 1].marker.getPosition() : latLng;
+MapRoute.prototype.pop = function () {
+    if (this.legs === 0) return;
 
-    return this.getDirections(origin, latLng).then(
-        function (result) {
-            var leg = {},
-                markerOptions = {};
+    var vertex = this.tail;
+    vertex.marker.setMap(null);
 
-            if (route.legs.length) {
-                leg.polyline = new google.maps.Polyline(_.extend(route.polylineOptions, {
-                    map: route.map,
-                    path: result.routes[0].overview_path,
-                    editable: true
-                }));
-
-                leg.prev_leg = route.legs[route.legs.length - 1];
-                leg.prev_leg.next_leg = leg;
-
-                leg.distance = result.routes[0].legs[0].distance.value;
-                route.distance += leg.distance;
-            }
-
-            if (!route.legs.length) {
-                markerOptions.icon = 'icons/green.png';
-            } else if (latLng.equals(route.legs[0].marker.getPosition())) {
-                markerOptions.map = null;
-                route.legs[0].polyline = leg.polyline;
-            } else {
-                markerOptions.icon = 'icons/red.png';
-            }
-
-            if (route.legs.length > 1) {
-                route.legs[route.legs.length - 1].marker.setOptions({
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 5,
-                        strokeWeight: 2,
-                        fillColor: 'white',
-                        fillOpacity: 1
-                    }
-                });
-            }
-
-            leg.marker = new google.maps.Marker(_.extend({
-                map: route.map,
-                position: result.routes[0].legs[0].end_location,
-                draggable: true
-            }, markerOptions));
-
-            google.maps.event.addListener(leg.marker, 'dragend', function () {
-                var origin = leg.polyline ? leg.prev_leg.marker.getPosition() : leg.marker.getPosition();
-                var promise = route.getDirections(origin, leg.marker.getPosition()).then(
-                    function (result) {
-                        leg.marker.setPosition(result.routes[0].legs[0].end_location);
-                        if (leg.polyline) leg.polyline.setOptions({path: result.routes[0].overview_path});
-                        return leg;
-                    },
-                    function (status) {
-                        // TODO ???
-                    }
-                );
-
-                if (leg.next_leg) {
-                    promise.then(function (leg) {
-                        route.getDirections(leg.marker.getPosition(), leg.next_leg.marker.getPosition()).then(
-                            function (result) {
-                                leg.next_leg.polyline.setOptions({path: result.routes[0].overview_path});
-                            }
-                        );
-                    });
-                }
-
-                promise.done();
-            });
-
-            route.legs.push(leg);
-
-            return leg;
-        },
-        function (status) {
-            return status;
-        });
-};
-
-MapRoute.prototype.popLeg = function () {
-    var leg = this.legs.pop();
-    if (!leg) return;
-
-    // Don't remove the marker on a finished route, where start marker == finish marker.
-    if (!this.legs.length || leg.marker != this.legs[0].marker) {
-        leg.marker.setMap(null);
+    if (this.legs === 1) {
+        this.head = this.tail = null;
+    } else {
+        vertex.line_in.setMap(null);
+        this.tail = vertex.prev;
+        this.tail.next = null;
     }
-    if (leg.polyline) leg.polyline.setMap(null);
 
-    return this.distance -= leg.distance;
+    this.distance -= vertex.length;
+    this.legs--;
+
+    return vertex;
 };
 
+/*
 MapRoute.prototype.setAllMap = function (map) {
     var leg;
     for (var i = 0; i < this.legs.length; i++) {
