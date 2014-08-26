@@ -36,17 +36,22 @@ angular.module('maps', [])
             }, 200);
         });
 
-        $scope.startRouting = function (mapRoute) {
+        $scope.startRouting = function (route) {
 
             $scope.misc.routing = true;
             map.setOptions({draggableCursor: 'crosshair'});
 
-            mapRoute = new MapRoute(map, directions);
-            mapRoutes.push(mapRoute);
+            if (!route) {
+                route = {route: new MapRoute(map, directions)};
+                mapRoutes.push(route);
+            }
+
+            route.currentRoute = true;
+            route.visible = true;
 
             routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
                 $timeout.cancel(clickTimeout);
-                mapRoute.append(e.latLng).then(function () {
+                route.route.append(e.latLng).then(function () {
                     $scope.$digest();
                 });
             });
@@ -58,23 +63,31 @@ angular.module('maps', [])
             // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
             // I guess it's ok, since the handler only expects an object with "latLng" property?
             // But what if I want stop()?
-            google.maps.event.trigger(map, 'dblclick', {latLng: route.mapRoute.legs[0].marker.getPosition()});
+            google.maps.event.trigger(map, 'dblclick', {latLng: route.route.head.marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
             $scope.misc.latLng = map.getCenter();
-            route.currentRoute = false;
             $scope.misc.routing = false;
+            route.currentRoute = false;
         };
 
         $scope.undoLastLeg = function (route) {
-            route.mapRoute.popLeg();
+            route.route.pop();
         };
 
         $scope.deleteRoute = function (route) {
-            route.mapRoute.clear();
-            _.remove($scope.misc.routes, route);
+            route.route.clear();
+            _.remove($scope.routes, route);
             if (route.currentRoute) {
                 $scope.misc.latLng = map.getCenter();
                 $scope.misc.routing = false;
+            }
+        };
+
+        $scope.visibleChanged = function (route) {
+            if (route.visible) {
+                route.route.show();
+            } else {
+                route.route.hide();
             }
         };
 

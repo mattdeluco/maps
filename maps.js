@@ -7,12 +7,12 @@
 function MapRoute (map, directions, styleOptions) {
     this.map = map;
     this.directions = directions;
-    this.distance = 0;
 
     this.head = this.tail = null;
-    this.legs = 0;
 
     this.name = '';
+    this.legs = 0;
+    this.distance = 0;
     this.visible = true;
 
     styleOptions = styleOptions || {};
@@ -126,10 +126,13 @@ MapRoute.prototype.getDirections = function (origin, destination) {
 
 
 MapRoute.prototype.pop = function () {
-    if (this.legs === 0) return;
+    if (this.legs < 2) return;
 
     var vertex = this.tail;
-    vertex.marker.setMap(null);
+
+    if (vertex !== this.head) {
+        vertex.marker.setMap(null);
+    }
 
     if (this.legs === 1) {
         this.head = this.tail = null;
@@ -137,6 +140,10 @@ MapRoute.prototype.pop = function () {
         vertex.line_in.setMap(null);
         this.tail = vertex.prev;
         this.tail.next = null;
+
+        if (this.tail !== this.head) {
+            this.tail.marker.setOptions(this.finishMarkerOptions);
+        }
     }
 
     this.distance -= vertex.length;
@@ -145,27 +152,34 @@ MapRoute.prototype.pop = function () {
     return vertex;
 };
 
-/*
-MapRoute.prototype.setAllMap = function (map) {
-    var leg;
-    for (var i = 0; i < this.legs.length; i++) {
-        leg = this.legs[i];
-        leg.marker.setMap(map);
-        if (leg.polyline) leg.polyline.setMap(map);
+
+MapRoute.prototype.setAllOptions = function (options) {
+    if (!this.head) return;
+    var vertex = this.head;
+    while (vertex) {
+        vertex.marker.setOptions(options);
+        if (vertex.line_in) vertex.line_in.setOptions(options);
+        vertex = vertex.next;
+        if (vertex === this.head) break;  // Looped route
     }
 };
 
+
 MapRoute.prototype.hide = function () {
-    this.setAllMap(null);
+    this.setAllOptions({map: null});
+    this.visible = false;
 };
 
+
 MapRoute.prototype.show = function () {
-    this.setAllMap(this.map);
+    this.setAllOptions({map: this.map});
+    this.visible = true;
 };
+
 
 MapRoute.prototype.clear = function () {
     this.hide();
-    this.legs = [];
+    this.legs = 0;
     this.distance = 0;
+    this.head = this.tail = null;
 };
-*/

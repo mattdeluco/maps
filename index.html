@@ -31,12 +31,12 @@
           </thead>
           <tbody>
             <tr ng-repeat="route in routes" ng-class="{active: route.currentRoute}">
-              <td><input type="checkbox" checked="checked"></td>
-              <td><input name="routeName" ng-model="route.name" type="text"></td>
-              <td>{{route.distance / 1000 | number:3}} km</td>
+              <td><input type="checkbox" ng-checked="route.visible" ng-model="route.visible" ng-change="visibleChanged(route)"></td>
+              <td><input name="routeName" ng-model="route.route.name" type="text"></td>
+              <td>{{route.route.distance / 1000 | number:3}} km</td>
               <td>
                 <button type="button" class="btn btn-primary btn-xs" ng-click="startRouting(route)" ng-hide="route.currentRoute">Edit</button>
-                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg(route)" ng-show="route.currentRoute">Undo</button>
+                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg(route)" ng-show="route.currentRoute" ng-disabled="route.route.legs < 2">Undo</button>
               </td>
               <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting(route)" ng-disabled="!route.currentRoute">Finish</button></td>
               <td><button class="btn btn-xs btn-danger" ng-click="deleteRoute(route)"><span class="glyphicon glyphicon-remove"></span></button></td>
