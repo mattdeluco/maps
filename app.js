@@ -18,18 +18,12 @@ angular.module('maps', [])
                 disableDoubleClickZoom: true
             },
             map = new google.maps.Map($('#map-canvas')[0], mapOptions),
-            directions = new google.maps.DirectionsService();
+            directions = new google.maps.DirectionsService(),
+            mapRoutes = [];
 
-        var Route = function (mapRoute) {
-            this.mapRoute = mapRoute;
-            this.name = '';
-            this.show = true;
-            this.currentRoute = true;
-        };
-
+        $scope.routes = mapRoutes;
         $scope.misc = {
             latLng: map.getCenter(),
-            routes: [],
             routing: false
         };
 
@@ -45,21 +39,23 @@ angular.module('maps', [])
         $scope.startRouting = function (route) {
 
             $scope.misc.routing = true;
+            map.setOptions({draggableCursor: 'crosshair'});
 
             if (!route) {
-                route = new Route(new MapRoute(map, directions));
-                $scope.misc.routes.push(route);
+                route = {route: new MapRoute(map, directions)};
+                mapRoutes.push(route);
             }
 
             route.currentRoute = true;
+            route.visible = true;
 
-            map.setOptions({draggableCursor: 'crosshair'});
             routingListenerId = google.maps.event.addListener(map, 'dblclick', function (e) {
                 $timeout.cancel(clickTimeout);
-                route.mapRoute.addLeg(e.latLng).then(function () {
+                route.route.append(e.latLng).then(function () {
                     $scope.$digest();
                 });
             });
+
         };
 
         $scope.finishRouting = function (route) {
@@ -67,31 +63,31 @@ angular.module('maps', [])
             // TODO Is there a better way to do this than mocking a MouseEvent object?  Possible to create MouseEvent?
             // I guess it's ok, since the handler only expects an object with "latLng" property?
             // But what if I want stop()?
-            google.maps.event.trigger(map, 'dblclick', {latLng: route.mapRoute.legs[0].marker.getPosition()});
+            google.maps.event.trigger(map, 'dblclick', {latLng: route.route.head.marker.getPosition()});
             google.maps.event.removeListener(routingListenerId);
             $scope.misc.latLng = map.getCenter();
-            route.currentRoute = false;
             $scope.misc.routing = false;
+            route.currentRoute = false;
         };
 
         $scope.undoLastLeg = function (route) {
-            route.mapRoute.popLeg();
-        };
-
-        $scope.showChanged = function (route) {
-            if (route.show) {
-                route.mapRoute.show();
-            } else {
-                route.mapRoute.hide();
-            }
+            route.route.pop();
         };
 
         $scope.deleteRoute = function (route) {
-            route.mapRoute.clear();
-            _.remove($scope.misc.routes, route);
+            route.route.clear();
+            _.remove($scope.routes, route);
             if (route.currentRoute) {
                 $scope.misc.latLng = map.getCenter();
                 $scope.misc.routing = false;
+            }
+        };
+
+        $scope.visibleChanged = function (route) {
+            if (route.visible) {
+                route.route.show();
+            } else {
+                route.route.hide();
             }
         };
 
