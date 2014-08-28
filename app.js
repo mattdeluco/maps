@@ -143,14 +143,30 @@ angular.module('maps', [])
     'PlacesSrvc',
     function ($scope, maps, places) {
         var map = maps.createMap($('#map-canvas')[0]),
-            misc = {};
+            placesResults = [];
 
-        $scope.misc = misc;
+        $scope.placesResults = placesResults;
+
+        $scope.toggleMarker = function (marker, visible) {
+            visible = visible || !marker.getMap();
+            if (visible) {
+                marker.setMap(map);
+            } else {
+                marker.setMap(null);
+            }
+        };
 
         $scope.search = function (keyword) {
             places.getPlace(map, keyword).then(
                 function (response) {
-                    misc.results = response.data.results.slice(0, 10);
+                    var results = response.data.results.slice(0, 10);
+
+                    for (var i = 0; i < results.length; i++) {
+                        placesResults.push({
+                            place: results[i],
+                            marker: new google.maps.Marker({position: results[i].geometry.location})
+                        });
+                    }
                 }
             );
 

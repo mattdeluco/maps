@@ -80,9 +80,9 @@
                   <td><button class="btn btn-xs btn-danger" ng-click=""><span class="glyphicon glyphicon-remove"></span></button></td>
                 </tr>
               -->
-                <tr ng-repeat="result in misc.results">
-                  <td>{{result.name | limitTo:20}}</td>
-                  <td>Lat: {{result.geometry.location.lat | number:4}}, Long: {{result.geometry.location.lng | number:4}}</td>
+                <tr ng-repeat="result in placesResults" ng-mouseenter="toggleMarker(result.marker, true)" ng-mouseleave="toggleMarker(result.marker, false)">
+                  <td>{{result.place.name | limitTo:20}}</td>
+                  <td>Lat: {{result.place.geometry.location.lat | number:4}}, Long: {{result.place.geometry.location.lng | number:4}}</td>
                   <td></td>
                   <td></td>
                 </tr>
@@ -106,7 +106,7 @@
   <script src="lib/q/q.js"></script>
   <script src="maps.js"></script>
 
-  <script src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+  <script src="http://maps.googleapis.com/maps/api/js?libraries=places,drawing,geometry&sensor=false"></script>
 
   <script src="config.js"></script>
   <script src="app.js"></script>
