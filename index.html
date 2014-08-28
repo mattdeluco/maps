@@ -13,36 +13,84 @@
 </head>
 <body>
 
-  <div class="container" ng-controller="MapsCtrl">
+  <div class="container">
     <div class="row">
       <div class="col-md-5">
-        <h1>Maps</h1>
-        <p>Lat: {{misc.latLng.lat() | number:4}}</p>
-        <p>Long: {{misc.latLng.lng() | number:4}}</p>
-        <button type="button" class="btn btn-success" ng-click="startRouting()" ng-disabled="misc.routing">New Route</button>
-        <table class="table table-condensed table-hover">
-          <thead>
-            <tr>
-              <td>Show</td>
-              <td>Route Name</td>
-              <td>Distance</td>
-              <td colspan="3" style="text-align: center">Edit</td>
-            </tr>
-          </thead>
-          <tbody>
-            <tr ng-repeat="route in routes" ng-class="{active: route.currentRoute}">
-              <td><input type="checkbox" ng-checked="route.visible" ng-model="route.visible" ng-change="visibleChanged(route)"></td>
-              <td><input name="routeName" ng-model="route.route.name" type="text"></td>
-              <td>{{route.route.distance / 1000 | number:3}} km</td>
-              <td>
-                <button type="button" class="btn btn-primary btn-xs" ng-click="startRouting(route)" ng-hide="route.currentRoute">Edit</button>
-                <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg(route)" ng-show="route.currentRoute" ng-disabled="route.route.legs < 2">Undo</button>
-              </td>
-              <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting(route)" ng-disabled="!route.currentRoute">Finish</button></td>
-              <td><button class="btn btn-xs btn-danger" ng-click="deleteRoute(route)"><span class="glyphicon glyphicon-remove"></span></button></td>
-            </tr>
-          </tbody>
-        </table>
+
+        <!-- Routes -->
+        <div class="row" ng-controller="MapRouteCtrl">
+          <div class="col-md-12">
+            <h1>Routes</h1>
+            <p>Centered at lat: {{misc.latLng.lat() | number:4}}, long: {{misc.latLng.lng() | number:4}}</p>
+            <button type="button" class="btn btn-success btn-sm" ng-click="startRouting()" ng-disabled="misc.routing">New Route</button>
+            <table class="table table-condensed table-hover">
+              <thead>
+                <tr>
+                  <td>Show</td>
+                  <td>Route Name</td>
+                  <td>Distance</td>
+                  <td colspan="3" style="text-align: center">Edit</td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="route in routes" ng-class="{active: route.currentRoute}">
+                  <td><input type="checkbox" ng-checked="route.visible" ng-model="route.visible" ng-change="visibleChanged(route)"></td>
+                  <td><input name="routeName" ng-model="route.route.name" type="text"></td>
+                  <td>{{route.route.distance / 1000 | number:3}} km</td>
+                  <td>
+                    <button type="button" class="btn btn-primary btn-xs" ng-click="startRouting(route)" ng-hide="route.currentRoute">Edit</button>
+                    <button type="button" class="btn btn-warning btn-xs" ng-click="undoLastLeg(route)" ng-show="route.currentRoute" ng-disabled="route.route.legs < 2">Undo</button>
+                  </td>
+                  <td><button type="button" class="btn btn-danger btn-xs" ng-click="finishRouting(route)" ng-disabled="!route.currentRoute">Finish</button></td>
+                  <td><button class="btn btn-xs btn-danger" ng-click="deleteRoute(route)"><span class="glyphicon glyphicon-remove"></span></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Places -->
+        <div class="row" ng-controller="PlacesCtrl">
+          <div class="col-md-12">
+            <h1>Places</h1>
+            <p>Double click on the map to create a new location</p>
+            <div class="input-group input-group-sm">
+              <input type="text" placeholder="Search" ng-model="misc.keyword" id="places-autocomplete-input" class="form-control input-sm">
+              <span class="input-group-btn">
+                <button type="button" ng-click="search(misc.keyword)" class="btn btn-default btn-sm">
+                  <span class="glyphicon glyphicon-search"></span>
+                </button>
+              </span>
+            </div>
+            <table class="table table-condensed table-hover">
+              <thead>
+              <tr>
+                <td>Name</td>
+                <td>Location</td>
+                <td>Notes</td>
+                <td>Edit</td>
+              </tr>
+              </thead>
+              <tbody>
+              <!--
+                <tr ng-repeat="">
+                  <td><input type="text" name="name" ng-model=""></td>
+                  <td>Lat: 46.5220, Long: -84.3451</td>
+                  <td><input type="text" name="details" ng-model=""></td>
+                  <td><button class="btn btn-xs btn-danger" ng-click=""><span class="glyphicon glyphicon-remove"></span></button></td>
+                </tr>
+              -->
+                <tr ng-repeat="result in misc.results">
+                  <td>{{result.name | limitTo:20}}</td>
+                  <td>Lat: {{result.geometry.location.lat | number:4}}, Long: {{result.geometry.location.lng | number:4}}</td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
       <div class="col-md-7">
         <div id="map-canvas"></div>
@@ -58,9 +106,10 @@
   <script src="lib/q/q.js"></script>
   <script src="maps.js"></script>
 
-  <script src='http://maps.googleapis.com/maps/api/js?sensor=false'></script>
+  <script src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
 
-  <script src='app.js'></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 
 </body>
 </html>

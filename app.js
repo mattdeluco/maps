@@ -5,10 +5,29 @@
 
 angular.module('maps', [])
 
-.controller('MapsCtrl', [
+.factory('MapsFactory', [
+    function () {
+
+        var map,
+            directions = new google.maps.DirectionsService();
+
+        return {
+            createMap: function (mapDiv, mapOptions) {
+                if (!map) {
+                    map = new google.maps.Map(mapDiv, mapOptions || {});
+                }
+                return map;
+            },
+            directions: directions
+        }
+    }
+])
+
+.controller('MapRouteCtrl', [
     '$scope',
     '$timeout',
-    function ($scope, $timeout) {
+    'MapsFactory',
+    function ($scope, $timeout, maps) {
 
         var clickTimeout,
             routingListenerId,
@@ -17,8 +36,8 @@ angular.module('maps', [])
                 zoom: 15,
                 disableDoubleClickZoom: true
             },
-            map = new google.maps.Map($('#map-canvas')[0], mapOptions),
-            directions = new google.maps.DirectionsService(),
+            map = maps.createMap($('#map-canvas')[0], mapOptions),
+            directions = maps.directions,
             mapRoutes = [];
 
         $scope.routes = mapRoutes;
@@ -91,5 +110,50 @@ angular.module('maps', [])
             }
         };
 
+    }
+])
+
+.factory('PlacesSrvc', [
+    '$http',
+    function ($http) {
+
+        var nearbyUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
+
+        return {
+            getPlace: function (map, keyword, searchOptions) {
+                searchOptions = _.extend({
+                    key: mapsApp.config.google_api_key,
+                    radius: 5000,
+                    keyword: keyword
+                }, searchOptions || {});
+                if (!searchOptions.hasOwnProperty('location')) {
+                    var pos = map.getCenter();
+                    searchOptions.location = pos.lat() + ',' + pos.lng();
+                }
+
+                return $http.get(nearbyUrl, {params: searchOptions});
+            }
+        };
+    }
+])
+
+.controller('PlacesCtrl', [
+    '$scope',
+    'MapsFactory',
+    'PlacesSrvc',
+    function ($scope, maps, places) {
+        var map = maps.createMap($('#map-canvas')[0]),
+            misc = {};
+
+        $scope.misc = misc;
+
+        $scope.search = function (keyword) {
+            places.getPlace(map, keyword).then(
+                function (response) {
+                    misc.results = response.data.results.slice(0, 10);
+                }
+            );
+
+        }
     }
 ]);
