@@ -114,7 +114,7 @@ MapRoute.prototype.getDirections = function (origin, destination) {
         destination: destination,
         travelMode: google.maps.TravelMode.DRIVING
     }, function (result, status) {
-        if (status != google.maps.DirectionsStatus.OK) {
+        if (status !== google.maps.DirectionsStatus.OK) {
             deferred.reject(status);
         } else {
             deferred.resolve(result);

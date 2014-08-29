@@ -113,39 +113,17 @@ angular.module('maps', [])
     }
 ])
 
-.factory('PlacesSrvc', [
-    '$http',
-    function ($http) {
-
-        var nearbyUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
-
-        return {
-            getPlace: function (map, keyword, searchOptions) {
-                searchOptions = _.extend({
-                    key: mapsApp.config.google_api_key,
-                    radius: 5000,
-                    keyword: keyword
-                }, searchOptions || {});
-                if (!searchOptions.hasOwnProperty('location')) {
-                    var pos = map.getCenter();
-                    searchOptions.location = pos.lat() + ',' + pos.lng();
-                }
-
-                return $http.get(nearbyUrl, {params: searchOptions});
-            }
-        };
-    }
-])
-
 .controller('PlacesCtrl', [
     '$scope',
     'MapsFactory',
-    'PlacesSrvc',
-    function ($scope, maps, places) {
+    function ($scope, maps) {
         var map = maps.createMap($('#map-canvas')[0]),
-            placesResults = [];
-
-        $scope.placesResults = placesResults;
+            autocomplete = new google.maps.places.Autocomplete($('#places-autocomplete-input')[0], {
+                bounds: map.getBounds(),
+                componentRestrictions: {country: 'ca'},
+                types: ['establishment']
+            }),
+            placesSrvc = new google.maps.places.PlacesService(map);
 
         $scope.toggleMarker = function (marker, visible) {
             visible = visible || !marker.getMap();
@@ -156,20 +134,33 @@ angular.module('maps', [])
             }
         };
 
-        $scope.search = function (keyword) {
-            places.getPlace(map, keyword).then(
-                function (response) {
-                    var results = response.data.results.slice(0, 10);
+        $scope.search = function (keyword, searchOptions) {
+            searchOptions = _.extend({
+                key: mapsApp.config.google_api_key,
+                radius: 5000,
+                keyword: keyword,
+                location: map.getCenter()
+            }, searchOptions || {});
+
+            placesSrvc.nearbySearch(searchOptions, function (placeResults, status) {
+                if (status !== google.maps.places.PlacesServiceStatus.OK) {
+                    // TODO
+                } else {
+                    var results = placeResults.slice(0, 10),
+                        places = [];
+
+                    $scope.places = places;
 
                     for (var i = 0; i < results.length; i++) {
-                        placesResults.push({
+                        places.push({
                             place: results[i],
                             marker: new google.maps.Marker({position: results[i].geometry.location})
                         });
                     }
-                }
-            );
 
-        }
+                    $scope.$digest();
+                }
+            });
+        };
     }
 ]);

@@ -67,8 +67,6 @@
               <tr>
                 <td>Name</td>
                 <td>Location</td>
-                <td>Notes</td>
-                <td>Edit</td>
               </tr>
               </thead>
               <tbody>
@@ -80,11 +78,9 @@
                   <td><button class="btn btn-xs btn-danger" ng-click=""><span class="glyphicon glyphicon-remove"></span></button></td>
                 </tr>
               -->
-                <tr ng-repeat="result in placesResults" ng-mouseenter="toggleMarker(result.marker, true)" ng-mouseleave="toggleMarker(result.marker, false)">
-                  <td>{{result.place.name | limitTo:20}}</td>
-                  <td>Lat: {{result.place.geometry.location.lat | number:4}}, Long: {{result.place.geometry.location.lng | number:4}}</td>
-                  <td></td>
-                  <td></td>
+                <tr ng-repeat="place in places" ng-mouseenter="toggleMarker(place.marker, true)" ng-mouseleave="toggleMarker(place.marker, false)">
+                  <td title="{{place.place.name}}">{{place.place.name | limitTo:30}}</td>
+                  <td>{{place.place.vicinity | limitTo:20}}</td>
                 </tr>
               </tbody>
             </table>
