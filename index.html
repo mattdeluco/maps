@@ -53,15 +53,23 @@
         <div class="row" ng-controller="PlacesCtrl">
           <div class="col-md-12">
             <h1>Places</h1>
-            <p>Double click on the map to create a new location</p>
+            <p>Double click on the map to create a new location, or search for locations below.</p>
+
             <div class="input-group input-group-sm">
               <input type="text" placeholder="Search" ng-model="misc.keyword" id="places-autocomplete-input" class="form-control input-sm">
               <span class="input-group-btn">
-                <button type="button" ng-click="search(misc.keyword)" class="btn btn-default btn-sm">
+                <button type="button" ng-click="search(misc.keyword)" data-toggle="dropdown" class="btn btn-default btn-sm dropdown-toggle">
                   <span class="glyphicon glyphicon-search"></span>
                 </button>
+
+                <ul class="dropdown-menu dropdown-menu-right" role="menu">
+                  <li ng-repeat="place in places" ng-mouseenter="togglePlace(place, true)" ng-mouseleave="togglePlace(place, false)">
+                    <a href="#" ng-click="savePlace(place)">{{place.place.name | limitTo:20}} - {{place.place.vicinity | limitTo: 15}}</a>
+                  </li>
+                </ul>
               </span>
             </div>
+
             <table class="table table-condensed table-hover">
               <thead>
               <tr>
@@ -78,7 +86,7 @@
                   <td><button class="btn btn-xs btn-danger" ng-click=""><span class="glyphicon glyphicon-remove"></span></button></td>
                 </tr>
               -->
-                <tr ng-repeat="place in places" ng-mouseenter="toggleMarker(place.marker, true)" ng-mouseleave="toggleMarker(place.marker, false)">
+                <tr ng-repeat="place in savedPlaces">
                   <td title="{{place.place.name}}">{{place.place.name | limitTo:30}}</td>
                   <td>{{place.place.vicinity | limitTo:20}}</td>
                 </tr>

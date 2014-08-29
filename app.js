@@ -118,14 +118,20 @@ angular.module('maps', [])
     'MapsFactory',
     function ($scope, maps) {
         var map = maps.createMap($('#map-canvas')[0]),
-            autocomplete = new google.maps.places.Autocomplete($('#places-autocomplete-input')[0], {
-                bounds: map.getBounds(),
-                componentRestrictions: {country: 'ca'},
-                types: ['establishment']
-            }),
             placesSrvc = new google.maps.places.PlacesService(map);
 
-        $scope.toggleMarker = function (marker, visible) {
+        $scope.savedPlaces = [];
+
+        $scope.savePlace = function (place) {
+            if (_.indexOf($scope.savedPlaces, place) > -1) return;
+            $scope.savedPlaces.push(place);
+            place.marker.setMap(map);
+        };
+
+        $scope.togglePlace = function (place, visible) {
+            if (_.indexOf($scope.savedPlaces, place) > -1) return;
+
+            var marker = place.marker;
             visible = visible || !marker.getMap();
             if (visible) {
                 marker.setMap(map);
@@ -154,7 +160,9 @@ angular.module('maps', [])
                     for (var i = 0; i < results.length; i++) {
                         places.push({
                             place: results[i],
-                            marker: new google.maps.Marker({position: results[i].geometry.location})
+                            marker: new google.maps.Marker({
+                                position: results[i].geometry.location
+                            })
                         });
                     }
 
