@@ -8,17 +8,18 @@
   <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap-theme.min.css">
 
   <style>
-    #map-canvas { height: 600px; }
+    .angular-google-map-container { height: 600px; width: 600px; }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="container" ng-controller="MapCtrl">
     <div class="row">
       <div class="col-md-5">
 
         <!-- Routes -->
-        <div class="row" ng-controller="MapRouteCtrl">
+        <!--
+        <div class="row">
           <div class="col-md-12">
             <h1>Routes</h1>
             <p>Centered at lat: {{misc.latLng.lat() | number:4}}, long: {{misc.latLng.lng() | number:4}}</p>
@@ -48,8 +49,9 @@
             </table>
           </div>
         </div>
-
+        -->
         <!-- Places -->
+        <!--
         <div class="row" ng-controller="PlacesCtrl">
           <div class="col-md-12">
             <h1>Places</h1>
@@ -78,14 +80,6 @@
               </tr>
               </thead>
               <tbody>
-              <!--
-                <tr ng-repeat="">
-                  <td><input type="text" name="name" ng-model=""></td>
-                  <td>Lat: 46.5220, Long: -84.3451</td>
-                  <td><input type="text" name="details" ng-model=""></td>
-                  <td><button class="btn btn-xs btn-danger" ng-click=""><span class="glyphicon glyphicon-remove"></span></button></td>
-                </tr>
-              -->
                 <tr ng-repeat="place in savedPlaces">
                   <td title="{{place.place.name}}">{{place.place.name | limitTo:30}}</td>
                   <td>{{place.place.vicinity | limitTo:20}}</td>
@@ -94,10 +88,21 @@
             </table>
           </div>
         </div>
+        -->
+
+        <div class="row">
+          <div class="col-md-12">
+            <h1>Routes</h1>
+            <button type="button" class="btn btn-success btn-sm" ng-click="startRouting()">Start</button>
+            <button type="button" class="btn btn-danger btn-sm" ng-click="stopRouting()">Stop</button>
+          </div>
+        </div>
 
       </div>
       <div class="col-md-7">
-        <div id="map-canvas"></div>
+        <google-map center="map.center" zoom="map.zoom" events="map.events">
+          <markers models="markers" coords="'coords'"></markers>
+        </google-map>
       </div>
     </div>
   </div>
@@ -106,12 +111,9 @@
   <script src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
   <script src="lib/angular/angular.min.js"></script>
   <script src="lib/lodash/dist/lodash.min.js"></script>
-  <script src="lib/angular-google-maps/dist/angular-google-maps.min.js"></script>
-
-  <script src="lib/q/q.js"></script>
-  <script src="maps.js"></script>
 
   <script src="http://maps.googleapis.com/maps/api/js?libraries=places,drawing,geometry&sensor=false"></script>
+  <script src="lib/angular-google-maps/dist/angular-google-maps.min.js"></script>
 
   <script src="config.js"></script>
   <script src="app.js"></script>

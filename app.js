@@ -3,8 +3,8 @@
  */
 'use strict';
 
-angular.module('maps', [])
-
+angular.module('maps', ['google-maps'])
+/*
 .factory('MapsFactory', [
     function () {
 
@@ -22,7 +22,62 @@ angular.module('maps', [])
         }
     }
 ])
+*/
+.controller('MapCtrl', [
+    '$scope',
+    '$log',
+    function ($scope, $log) {
 
+        var mapClickEventHandler,
+            mapEvents = {
+                click: 'google.maps.Map.events.click'
+            };
+
+        var mapEventHandler = function (map, event, args) {
+            $scope.$apply(function () {
+                $scope.$emit(mapEvents[event], map, args[0]);
+            });
+        };
+
+        $scope.map = {
+            center: {
+                latitude: 46.5220,
+                longitude: -84.3451
+            },
+            zoom: 15,
+            events: {
+                click: mapEventHandler
+            }
+        };
+
+        $scope.markers = [{
+            id: 1,
+            coords: {latitude: 46.5220, longitude: -84.3451}
+        }];
+        $scope.polylines = [];
+
+        $scope.startRouting = function () {
+            mapClickEventHandler = $scope.$on(
+                mapEvents['click'],
+                function (event, map, mouseEvent) {
+                    var pos = mouseEvent.latLng;
+                    $scope.markers.push({
+                        id: pos.lat(),
+                        coords: {latitude: pos.lat(), longitude: pos.lng()}
+                    });
+                    $log.log($scope.markers);
+                });
+        };
+
+        $scope.stopRouting = function () {
+            mapClickEventHandler();
+            mapClickEventHandler = null;
+        };
+
+
+    }
+]);
+/*
 .controller('MapRouteCtrl', [
     '$scope',
     '$timeout',
@@ -172,3 +227,4 @@ angular.module('maps', [])
         };
     }
 ]);
+*/
